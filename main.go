@@ -28,13 +28,13 @@ func main() {
 	// получить все задачи
 	r.GET("/tasks", HandleGetAllTasks)
 	// поменять значение выполненности
-	r.POST("/tasks/:taskId/", HandleToggleComplete)
+	r.POST("/tasks/:taskId", HandleToggleComplete)
 	// получить 1 задачу по ее id
-	r.GET("/tasks/:taskId", HandleGetOneTask)
+	r.GET("/tasks/:taskId", HandleGetTask)
 	// удалить задачу по ее id
 	r.DELETE("/tasks/:taskId", HandleDeleteTask)
 	// изменить задачу по ее id
-	r.PATCH("/tasks/:taskID", HandleChangeTask)
+	r.PATCH("/tasks/:taskId", HandleChangeTask)
 
 	r.Run()
 
@@ -51,6 +51,7 @@ func HandleCreateTask(c *gin.Context) {
 	err := json.NewDecoder(c.Request.Body).Decode(&task)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, "У тебя неправильный json"+err.Error())
+		return
 	}
 
 	id := uuid.New()
@@ -62,6 +63,7 @@ func HandleCreateTask(c *gin.Context) {
 
 func HandleGetAllTasks(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
+
 }
 
 func HandleToggleComplete(c *gin.Context) {
@@ -69,6 +71,7 @@ func HandleToggleComplete(c *gin.Context) {
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, "Ты указал неправильный id задачи"+err.Error())
+		return
 	}
 
 	task := tasks[id]
@@ -77,17 +80,19 @@ func HandleToggleComplete(c *gin.Context) {
 	c.JSON(http.StatusOK, task)
 }
 
-func HandleGetOneTask(c *gin.Context) {
+func HandleGetTask(c *gin.Context) {
 	idStr := c.Param("taskId")   // Получаем строку из URL-параметра "taskId", к примеру если запрос пришёл на /tasks/7c2544b2-aa6f..., то idStr = "7c2544b2-aa6f...".
 	id, err := uuid.Parse(idStr) // Превращаем строку idStr в тип uuid.UUID
 	if err != nil {
 		c.JSON(http.StatusBadRequest, "Ты указал неправильный id задачи"+err.Error())
+		return
 	}
 
 	task, exists := tasks[id] // Находим задачу в мапе tasks по ее id
 
 	if !exists {
-		c.JSON(http.StatusNotFound, "Задача не найдена"+err.Error())
+		c.JSON(http.StatusNotFound, "Задача не найдена")
+		return
 	}
 	c.JSON(http.StatusOK, task)
 }
@@ -115,22 +120,22 @@ func HandleChangeTask(c *gin.Context) {
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, "Ты указал неправильный id задачи"+err.Error())
+		return
 	}
 
 	task, exists := tasks[id]
 	if !exists {
-		c.JSON(http.StatusNotFound, "Задача не найдена"+err.Error())
+		c.JSON(http.StatusNotFound, "Задача не найдена")
+		return
 	}
 
 	var updates Task
 	if err := c.BindJSON(&updates); err != nil { // BindJSON читает тело запроса body и записывает его в структуру updates, тоесть преобразует JSON в Go объект(структуру)
 		c.JSON(http.StatusBadRequest, "у тебя неправильный json"+err.Error())
+		return
 	}
 
-	if updates.Title != "" { // тут проверяем было ли передано поле Title в теле запроса, мы проверяем, если строка не пустая , то значит клиент ее отправил.
-		task.Title = updates.Title
-	}
-
+	task.Title = updates.Title
 	tasks[id] = task
 
 	c.JSON(http.StatusOK, task)
