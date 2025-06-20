@@ -1,27 +1,35 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
+	"github.com/RegressorSSS/todolist/handler"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx"
 )
-
-type Task struct {
-	Id          uuid.UUID `json: "id"`
-	Title       string    `json: "title"`
-	Description string    `json: "description"`
-	IsComplete  bool      `json: "is_complete"`
-	CreatedAt   time.Time `json: "created_at"`
-}
-
-var tasks = make(map[uuid.UUID]Task)
 
 func main() {
 
-	r := gin.Default() // роутер который направляет запросы куда надо, для него мы создаем пути в коде снизу
+	dbURL := "postgres://postgres:postgres@localhost:5432/postgres"
+	conn, err := pgx.Connect(context.Background(), dbURL)
+	if err != nil {
+		log.Fatalf("Ошибка подключения к БД: %s", err)
+		return
+	}
+
+	err = conn.Ping(conext.Background())
+	if err != nil {
+		log.Fatalf("ошибка при пинге БД: %s", err)
+	}
+
+	tasksHandler := handler.New(conn)
+
+	r := gin.Default()
 
 	// создать новую задачу
 	r.POST("/tasks", HandleCreateTask)
@@ -37,12 +45,6 @@ func main() {
 	r.PATCH("/tasks/:taskId", HandleChangeTask)
 
 	r.Run()
-
-	// r.POST("/tasks", func(c *gin.Context) { // эти пути называются эндпоинты
-	// 	c.JSON(http.StatusOK, gin.H{ // тут мы возвращаем клиенту JSON запрос который он сделал, пример {"message": "json"}
-	// 		"message": "hello get",
-	// 	})
-	// })
 
 }
 
